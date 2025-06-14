@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monaco Racing Game</title>
+  <style>
+    html, body {
+      margin: 0;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      font-family: Arial;
+      z-index: 10;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/examples/js/loaders/GLTFLoader.js"></script>
+</head>
+<body>
+  <div id="controls">
+    <p><strong>Controles:</strong></p>
+    <p>W - Acelerar | S - Frenar</p>
+    <p>A/D - Girar Izquierda/Derecha</p>
+    <p>Espacio - Freno de mano</p>
+  </div>
+  <audio id="bgm" loop autoplay>
+    <source src="https://cdn.pixabay.com/download/audio/2023/05/24/audio_aaf55f4bb8.mp3?filename=night-drive-147506.mp3" type="audio/mpeg">
+  </audio>
+  <script>
+    let scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x202020);
+
+    let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 5, 10);
+
+    let renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(10, 20, 10);
+    scene.add(light);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambient);
+
+    // Circuito plano
+    const circuitGeometry = new THREE.PlaneGeometry(200, 200);
+    const circuitMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
+    const circuit = new THREE.Mesh(circuitGeometry, circuitMaterial);
+    circuit.rotation.x = -Math.PI / 2;
+    scene.add(circuit);
+
+    // Bordes del circuito
+    const borderMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    const createBorder = (x, z) => {
+      const border = new THREE.Mesh(
+        new THREE.BoxGeometry(200, 1, 2),
+        borderMaterial
+      );
+      border.position.set(x, 0.5, z);
+      return border;
+    };
+    scene.add(createBorder(0, -100));
+    scene.add(createBorder(0, 100));
+
+    let car;
+    const loader = new THREE.GLTFLoader();
+    loader.load(
+      'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/F1Car/glTF/F1Car.gltf',
+      function (gltf) {
+        car = gltf.scene;
+        car.scale.set(0.4, 0.4, 0.4);
+        car.position.set(0, 0, 0);
+        scene.add(car);
+      },
+      undefined,
+      function (error) {
+        console.error('Error cargando modelo:', error);
+      }
+    );
+
+    let speed = 0;
+    let angle = 0;
+    const keys = {};
+
+    window.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
+    window.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      if (!car) return;
+
+      const acc = 0.05;
+      const maxSpeed = 1.2;
+      const turnRate = 0.045;
+
+      if (keys['w']) speed = Math.min(maxSpeed, speed + acc);
+      if (keys['s']) speed = Math.max(-maxSpeed / 2, speed - acc);
+      if (keys[' ']) speed *= 0.8;
+      if (keys['a']) angle += turnRate;
+      if (keys['d']) angle -= turnRate;
+
+      speed *= 0.98;
+
+      car.rotation.y = angle;
+      car.position.x -= Math.sin(angle) * speed;
+      car.position.z -= Math.cos(angle) * speed;
+
+      camera.position.x = car.position.x + 8 * Math.sin(angle + Math.PI);
+      camera.position.z = car.position.z + 8 * Math.cos(angle + Math.PI);
+      camera.position.y = car.position.y + 5;
+      camera.lookAt(car.position);
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
